@@ -44,9 +44,6 @@ _ABBREVIATIONS = {
     "st",
     "jr",
     "sr",
-    "bn",
-    "mn",
-    "mln",
 }
 
 _CANDIDATE = re.compile(r"(?<=[.!?])[\"')\]]*\s+(?=[\"'(\[]?[A-Z0-9])")

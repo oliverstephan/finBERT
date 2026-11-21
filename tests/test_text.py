@@ -31,3 +31,12 @@ def test_paragraphs_and_whitespace():
         "Second paragraph wraps here",
     ]
     assert split_sentences("   \n\n ") == []
+
+
+def test_splits_after_amount_units():
+    # "mn"/"bn" usually end a sentence in financial text ("rose to EUR 13.1 mn.") and must not block a split.
+    assert split_sentences("Profit rose to EUR 13.1 mn. Sales were USD 2 bn. Net loss widened.") == [
+        "Profit rose to EUR 13.1 mn.",
+        "Sales were USD 2 bn.",
+        "Net loss widened.",
+    ]
