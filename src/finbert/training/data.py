@@ -3,28 +3,22 @@
 # examples, we would highly recommend checking that library as well.
 
 
-from __future__ import absolute_import, division, print_function
+"""Data handling for FinBERT training (ported from the original ``finbert/utils.py``)."""
 
 import csv
-import sys
+import logging
 import os
-import torch
 
 import numpy as np
-import logging
+import torch
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
-                    datefmt='%m/%d/%Y %H:%M:%S',
-                    level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 # Classes regarding input and data handling
 
-WEIGHTS_NAME = 'pytorch_model.bin'
-CONFIG_NAME = 'config.json'
 
-class InputExample(object):
+class InputExample:
     """A single training/test example for simple sequence classification."""
 
     def __init__(self, guid, text, label=None, agree=None):
@@ -47,7 +41,7 @@ class InputExample(object):
         self.agree = agree
 
 
-class InputFeatures(object):
+class InputFeatures:
     """
     A single set of features for the data.
     """
@@ -60,18 +54,16 @@ class InputFeatures(object):
         self.agree = agree
 
 
-class DataProcessor(object):
+class DataProcessor:
     """Base class to read data files."""
 
     @classmethod
     def _read_tsv(cls, input_file):
         """Reads a tab separated value file."""
-        with open(input_file, "r") as f:
+        with open(input_file, encoding="utf-8") as f:
             reader = csv.reader(f, delimiter="\t")
             lines = []
             for line in reader:
-                if sys.version_info[0] == 2:
-                    line = list(unicode(cell, 'utf-8') for cell in line)
                 lines.append(line)
         return lines
 
@@ -100,22 +92,18 @@ class FinSentProcessor(DataProcessor):
     def _create_examples(self, lines, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
-        for (i, line) in enumerate(lines):
+        for i, line in enumerate(lines):
             if i == 0:
                 continue
-            guid = "%s-%s" % (set_type, str(i))
+            guid = f"{set_type}-{i}"
             text = line[1]
             label = line[2]
-            try:
-                agree = line[3]
-            except:
-                agree = None
-            examples.append(
-                InputExample(guid=guid, text=text, label=label, agree=agree))
+            agree = line[3] if len(line) > 3 else None
+            examples.append(InputExample(guid=guid, text=text, label=label, agree=agree))
         return examples
 
 
-def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer, mode='classification'):
+def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer, mode="classification"):
     """
     Loads a data file into a list of InputBatch's. With this function, the InputExample's are converted to features
     that can be used for the model. Text is tokenized, converted to ids and zero-padded. Labels are mapped to integers.
@@ -139,17 +127,16 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         A list of InputFeature's, which is an InputBatch.
     """
 
-    if mode == 'classification':
+    if mode == "classification":
         label_map = {label: i for i, label in enumerate(label_list)}
         label_map[None] = 9090
 
     features = []
-    for (ex_index, example) in enumerate(examples):
+    for ex_index, example in enumerate(examples):
         tokens = tokenizer.tokenize(example.text)
 
         if len(tokens) > max_seq_length - 2:
-            tokens = tokens[:(max_seq_length // 4) - 1] + tokens[
-                                                          len(tokens) - (3 * max_seq_length // 4) + 1:]
+            tokens = tokens[: (max_seq_length // 4) - 1] + tokens[len(tokens) - (3 * max_seq_length // 4) + 1 :]
 
         tokens = ["[CLS]"] + tokens + ["[SEP]"]
 
@@ -163,44 +150,39 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         input_ids += padding
         attention_mask += padding
 
-
         token_type_ids += padding
 
         assert len(input_ids) == max_seq_length
         assert len(attention_mask) == max_seq_length
         assert len(token_type_ids) == max_seq_length
 
-        if mode == 'classification':
+        if mode == "classification":
             label_id = label_map[example.label]
-        elif mode == 'regression':
+        elif mode == "regression":
             label_id = float(example.label)
         else:
             raise ValueError("The mode should either be classification or regression. You entered: " + mode)
 
         agree = example.agree
-        mapagree = {'0.5': 1, '0.66': 2, '0.75': 3, '1.0': 4}
-        try:
-            agree = mapagree[agree]
-        except:
-            agree = 0
+        mapagree = {"0.5": 1, "0.66": 2, "0.75": 3, "1.0": 4}
+        agree = mapagree.get(agree, 0)
 
         if ex_index < 1:
             logger.info("*** Example ***")
-            logger.info("guid: %s" % (example.guid))
-            logger.info("tokens: %s" % " ".join(
-                [str(x) for x in tokens]))
-            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-            logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
-            logger.info(
-                "token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
-            logger.info("label: %s (id = %d)" % (example.label, label_id))
+            logger.info("guid: %s", example.guid)
+            logger.info("tokens: %s", " ".join(tokens))
+            logger.info("input_ids: %s", input_ids)
+            logger.info("label: %s (id = %s)", example.label, label_id)
 
         features.append(
-            InputFeatures(input_ids=input_ids,
-                          attention_mask=attention_mask,
-                          token_type_ids=token_type_ids,
-                          label_id=label_id,
-                          agree=agree))
+            InputFeatures(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                token_type_ids=token_type_ids,
+                label_id=label_id,
+                agree=agree,
+            )
+        )
     return features
 
 
@@ -218,26 +200,28 @@ def softmax(x):
 def get_metrics(df):
     "Computes accuracy and precision-recall for different sentiments."
 
-    df.loc[:, 'guess'] = df.predictions.apply(np.argmax)
-    df.loc[:, 'accurate'] = df.apply(lambda x: x['guess'] == x['labels'], axis=1)
+    df.loc[:, "guess"] = df.predictions.apply(np.argmax)
+    df.loc[:, "accurate"] = df.apply(lambda x: x["guess"] == x["labels"], axis=1)
     accuracy = df.accurate.sum() / df.shape[0]
 
-    pos_recall = df[df['labels'] == 0].accurate.sum() / df[df['labels'] == 0].shape[0]
-    neg_recall = df[df['labels'] == 1].accurate.sum() / df[df['labels'] == 1].shape[0]
-    net_recall = df[df['labels'] == 2].accurate.sum() / df[df['labels'] == 2].shape[0]
+    pos_recall = df[df["labels"] == 0].accurate.sum() / df[df["labels"] == 0].shape[0]
+    neg_recall = df[df["labels"] == 1].accurate.sum() / df[df["labels"] == 1].shape[0]
+    net_recall = df[df["labels"] == 2].accurate.sum() / df[df["labels"] == 2].shape[0]
 
-    pos_precision = df[df['guess'] == 0].accurate.sum() / df[df['guess'] == 0].shape[0]
-    neg_precision = df[df['guess'] == 1].accurate.sum() / df[df['guess'] == 1].shape[0]
-    net_precision = df[df['guess'] == 2].accurate.sum() / df[df['guess'] == 2].shape[0]
+    pos_precision = df[df["guess"] == 0].accurate.sum() / df[df["guess"] == 0].shape[0]
+    neg_precision = df[df["guess"] == 1].accurate.sum() / df[df["guess"] == 1].shape[0]
+    net_precision = df[df["guess"] == 2].accurate.sum() / df[df["guess"] == 2].shape[0]
 
     pos_f1score = 2 * (pos_precision * pos_recall) / (pos_precision + pos_recall)
     neg_f1score = 2 * (neg_precision * neg_recall) / (neg_precision + neg_recall)
     net_f1score = 2 * (net_precision * net_recall) / (net_precision + net_recall)
 
-    return {'Accuracy': accuracy,
-            'Positive': {'precision': pos_precision, 'recall': pos_recall, 'f1-score': pos_f1score}, 'Negative': \
-                {'precision': neg_precision, 'recall': neg_recall, 'f1-score': neg_f1score},
-            'Neutral': {'precision': net_precision, 'recall': net_recall, 'f1-score': net_f1score}}
+    return {
+        "Accuracy": accuracy,
+        "Positive": {"precision": pos_precision, "recall": pos_recall, "f1-score": pos_f1score},
+        "Negative": {"precision": neg_precision, "recall": neg_recall, "f1-score": neg_f1score},
+        "Neutral": {"precision": net_precision, "recall": net_recall, "f1-score": net_f1score},
+    }
 
 
 def get_prediction(text, model, tokenizer):
@@ -271,30 +255,21 @@ def get_prediction(text, model, tokenizer):
 
     features = []
     features.append(
-        InputFeatures(input_ids=input_ids,
-                      token_type_ids=token_type_ids,
-                      attention_mask=attention_mask,
-                      label_id=None))
+        InputFeatures(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, label_id=None)
+    )
 
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
     all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
 
     model.eval()
-    prediction = softmax(model(all_input_ids, all_attention_mask, all_token_type_ids).detach().numpy())
+    with torch.no_grad():
+        logits = model(all_input_ids, attention_mask=all_attention_mask, token_type_ids=all_token_type_ids).logits
+    prediction = softmax(logits.cpu().numpy())
     return prediction
 
 
-def chunks(l, n):
-    """
-    Simple utility function to split a list into fixed-length chunks.
-    Parameters
-    ----------
-    l: list
-        given list
-    n: int
-        length of the sequence
-    """
-    for i in range(0, len(l), n):
-        # Create an index range for l of n items:
-        yield l[i:i + n]
+def chunks(items, n):
+    """Split a list into consecutive chunks of length ``n``."""
+    for i in range(0, len(items), n):
+        yield items[i : i + n]

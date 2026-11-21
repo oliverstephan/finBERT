@@ -1,35 +1,75 @@
 # FinBERT: Financial Sentiment Analysis with BERT
 
-FinBERT sentiment analysis model is now available on Hugging Face model hub. You can get the model [here](https://huggingface.co/ProsusAI/finbert). 
+FinBERT is a BERT model further trained on financial text and fine-tuned for sentiment classification
+(positive / negative / neutral). See [FinBERT: Financial Sentiment Analysis with Pre-trained Language
+Models](https://arxiv.org/pdf/1908.10063.pdf) for details. The fine-tuned model is published on the Hugging Face
+Hub as [`ProsusAI/finbert`](https://huggingface.co/ProsusAI/finbert).
 
-FinBERT is a pre-trained NLP model to analyze sentiment of financial text. It is built by further training
- the [BERT](https://arxiv.org/pdf/1810.04805.pdf) language model in the finance domain, using a large financial corpus and thereby fine-tuning
-  it for financial sentiment classification. For the details, please see 
-  [FinBERT: Financial Sentiment Analysis with Pre-trained Language Models](https://arxiv.org/pdf/1908.10063.pdf).
+This repository wraps that model in a small, modern Python package:
 
-**Important Note:** 
-FinBERT implementation relies on Hugging Face's `pytorch_pretrained_bert` library and their implementation of BERT for sequence classification tasks. `pytorch_pretrained_bert` is an earlier version of the [`transformers`](https://github.com/huggingface/transformers) library. It is on the top of our priority to migrate the code for FinBERT to `transformers` in the near future.
+- **Prediction** via the `transformers` text-classification pipeline, sentence by sentence
+- **REST API** with FastAPI (OpenAPI docs at `/docs`)
+- **CLI** for scoring text files into CSV
+- **Optional training module** with the original discriminative fine-tuning and gradual unfreezing
 
-## Installing
- Install the dependencies by creating the Conda environment `finbert` from the given `environment.yml` file and
- activating it.
+Each sentence gets the three class probabilities, the predicted label and a
+**sentiment score = P(positive) − P(negative)** in [-1, 1].
+
+## Installation
+
+Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
+
 ```bash
-conda env create -f environment.yml
-conda activate finbert
+uv sync                 # prediction, API and CLI
+uv sync --extra train   # additionally pandas, scikit-learn, tqdm for training
 ```
 
-## Models
-FinBERT sentiment analysis model is now available on Hugging Face model hub. You can get the model [here](https://huggingface.co/ProsusAI/finbert). 
+The model (~440 MB) is downloaded from the Hugging Face Hub on first use and cached under `~/.cache/huggingface`.
 
-Or, you can download the models from the links below:
-* [Language model trained on TRC2](https://prosus-public.s3-eu-west-1.amazonaws.com/finbert/language-model/pytorch_model.bin)
-* [Sentiment analysis model trained on Financial PhraseBank](https://prosus-public.s3-eu-west-1.amazonaws.com/finbert/finbert-sentiment/pytorch_model.bin)
+## Usage
 
-For both of these model, the workflow should be like this:
-* Create a directory for the model. For example: `models/sentiment/<model directory name>`
-* Download the model and put it into the directory you just created.
-* Put a copy of `config.json` in this same directory. 
-* Call the model with `.from_pretrained(<model directory name>)`
+### Python
+
+```python
+from finbert import FinBertPredictor
+
+predictor = FinBertPredictor()  # ProsusAI/finbert; pass a local directory to use your own model
+for r in predictor.predict("Operating profit rose to EUR 13.1 mn. The net loss widened sharply."):
+    print(r.prediction, round(r.sentiment_score, 3), r.sentence)
+```
+
+### Command line
+
+```bash
+uv run finbert predict --text-file examples/sample.txt                 # print to stdout
+uv run finbert predict --text-file examples/sample.txt --out output/predictions.csv
+```
+
+### REST API
+
+```bash
+uv run finbert serve --port 8000        # or: uv run uvicorn finbert.api:create_app --factory
+curl -s localhost:8000/predict -H 'content-type: application/json' \
+     -d '{"text": "Revenue rose 12% year on year. Margins came under pressure."}'
+```
+
+| Endpoint        | Description                                                        |
+|-----------------|--------------------------------------------------------------------|
+| `POST /predict` | `{"text": "...", "split_sentences": true}` → per-sentence scores and average |
+| `GET /health`   | Status, model id and package version                               |
+| `GET /docs`     | Interactive OpenAPI documentation                                  |
+
+Environment variables: `FINBERT_MODEL` (model id or path, default `ProsusAI/finbert`), `FINBERT_DEVICE`
+(`cpu`, `cuda`, `mps`), `FINBERT_CORS_ORIGINS` (comma separated, default `*`).
+
+### Docker
+
+```bash
+docker build -t finbert .
+docker run -p 8000:8000 finbert
+```
+
+The image uses CPU-only PyTorch and bakes the model in at build time, so the container needs no network access.
 
 ## Datasets
 There are two datasets used for FinBERT. The language model further training is done on a subset of Reuters TRC2 
@@ -43,36 +83,59 @@ For the sentiment analysis, we used Financial PhraseBank from [Malo et al. (2014
 To create these files, do the following steps:
 - Download the Financial PhraseBank from the above link.
 - Get the path of `Sentences_50Agree.txt` file in the `FinancialPhraseBank-v1.0` zip.
-- Run the [datasets script](scripts/datasets.py):
-```python scripts/datasets.py --data_path <path to Sentences_50Agree.txt>```
+- Run the datasets script:
+```bash
+uv run --extra train python -m finbert.training.datasets --data-path <path to Sentences_50Agree.txt>
+```
 
 ## Training the model
-Training is done in `finbert_training.ipynb` notebook. The trained model will
- be saved to `models/classifier_model/finbert-sentiment`. You can find the training parameters in the notebook as follows:
+
+Training lives in the optional `finbert.training` module (install with `uv sync --extra train`):
+
 ```python
-config = Config(   data_dir=cl_data_path,
-                   bert_model=bertmodel,
-                   num_train_epochs=4.0,
-                   model_dir=cl_path,
-                   max_seq_length = 64,
-                   train_batch_size = 32,
-                   learning_rate = 2e-5,
-                   output_mode='classification',
-                   warm_up_proportion=0.2,
-                   local_rank=-1,
-                   discriminate=True,
-                   gradual_unfreeze=True )
+from transformers import AutoModelForSequenceClassification
+from finbert.training import Config, FinBert
+
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
+config = Config(
+    data_dir="data/sentiment_data",
+    bert_model=model,
+    model_dir="models/classifier_model/finbert-sentiment",
+    num_train_epochs=4,
+    max_seq_length=64,
+    train_batch_size=32,
+    learning_rate=2e-5,
+    warm_up_proportion=0.2,
+    discriminate=True,  # discriminative fine-tuning
+    gradual_unfreeze=True,  # gradual unfreezing
+)
+finbert = FinBert(config)
+finbert.prepare_model(label_list=["positive", "negative", "neutral"])
+trained = finbert.train(finbert.get_data("train"), finbert.create_the_model())
 ```
-The last two parameters `discriminate` and `gradual_unfreeze` determine whether to apply the corresponding technique 
-against catastrophic forgetting.
 
-## Getting predictions
-We provide a script to quickly get sentiment predictions using FinBERT. Given a .txt file, `predict.py` produces a .csv file including the sentences in the text, corresponding softmax probabilities for three labels, actual prediction and sentiment score (which is calculated with: probability of positive - probability of negative).
+The output directory is a standard Hugging Face model directory and can be used directly with
+`FinBertPredictor("models/classifier_model/finbert-sentiment")`.
 
-Here's an example with the provided example text: `test.txt`. From the command line, simply run:
+Changes compared with the original training code:
+
+- `gradient_accumulation_steps > 1` now works. Previously `loss.backward()` was skipped whenever accumulation was
+  enabled, so no gradients were computed and the model did not learn.
+- `torch.optim.AdamW` replaces the removed `transformers.AdamW`, the best epoch is kept in memory and the model is
+  saved with `save_pretrained` (including the tokenizer).
+- fp16 and distributed training are not supported.
+
+`notebooks/finbert_training.ipynb` is kept as a reference for the original experiments and is not maintained.
+
+## Development
+
 ```bash
-python predict.py --text_path test.txt --output_dir output/ --model_path models/classifier_model/finbert-sentiment
+uv sync --extra train
+uv run pytest              # fast, offline unit tests (fake classifier and a tiny BERT)
+uv run pytest -m slow      # smoke test against the real ProsusAI/finbert model (needs network)
+uv run ruff check . && uv run ruff format --check .
 ```
+
 ## Disclaimer
 This is not an official Prosus product. It is the outcome of an intern research project in Prosus AI team.
 ### About Prosus 

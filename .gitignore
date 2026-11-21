@@ -20,7 +20,7 @@ target/
 .ipynb_checkpoints
 
 # pyenv
-.python-version
+
 
 # Environments
 .env
@@ -35,3 +35,10 @@ venv.bak/
 #pycharm
 workspace.xml
 models/
+
+# uv / tooling
+.venv/
+.pytest_cache/
+.ruff_cache/
+models/
+output/

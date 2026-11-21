@@ -1,4 +1,10 @@
-notebooks
-output
 .git
-models/language_model
+.venv
+.github
+**/__pycache__
+.pytest_cache
+.ruff_cache
+data/
+models/
+notebooks/
+tests/
