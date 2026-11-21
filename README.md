@@ -106,8 +106,8 @@ config = Config(
     train_batch_size=32,
     learning_rate=2e-5,
     warm_up_proportion=0.2,
-    discriminate=True,       # discriminative fine-tuning
-    gradual_unfreeze=True,   # gradual unfreezing
+    discriminate=True,  # discriminative fine-tuning
+    gradual_unfreeze=True,  # gradual unfreezing
 )
 finbert = FinBert(config)
 finbert.prepare_model(label_list=["positive", "negative", "neutral"])
