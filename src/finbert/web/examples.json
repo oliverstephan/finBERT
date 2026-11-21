@@ -1,0 +1,47 @@
+[
+  {
+    "id": "fw",
+    "path": "Kredit-Frühwarnung",
+    "entity": "Nordhafen Logistik AG",
+    "source": "Nachrichtenmeldung",
+    "date": "2026-11-20",
+    "language": "en",
+    "text": "Nordhafen Logistik cut its full-year EBITDA guidance by 18 percent. Freight volumes in the Baltic corridor fell for the third consecutive quarter. Management confirmed that the revolving credit facility remains fully available. The annual general meeting will take place in Hamburg on 14 May. Rating agencies have placed the issuer on review for a possible downgrade."
+  },
+  {
+    "id": "adhoc",
+    "path": "Ad-hoc-Meldung",
+    "entity": "Baltic Retail Group",
+    "source": "Ad-hoc-Mitteilung (englisch)",
+    "date": "2026-11-17",
+    "language": "en",
+    "text": "Baltic Retail Group raises its outlook for the 2026 financial year. Like-for-like sales grew by 6.4 percent in the third quarter, well ahead of market expectations. The company now expects an operating margin of 5.8 to 6.1 percent. The Management Board will present the full figures on 28 November."
+  },
+  {
+    "id": "esg",
+    "path": "ESG-Risiko",
+    "entity": "Rheinwerk Energie AG",
+    "source": "Presse und NGO-Bericht",
+    "date": "2026-11-19",
+    "language": "en",
+    "text": "Regulators opened an investigation into emissions reporting at two Rheinwerk plants. Rheinwerk said it will publish an independent audit of its methane data in June. A labour union reported repeated safety violations at a subcontractor site. The board appointed a new chief compliance officer with effect from 1 January. The company operates 14 power plants in Germany and the Netherlands."
+  },
+  {
+    "id": "de",
+    "path": "Deutscher Text",
+    "entity": "Alpenstahl SE",
+    "source": "Ad-hoc-Meldung",
+    "date": "2026-11-18",
+    "language": "de",
+    "text": "Die Alpenstahl SE senkt ihre Prognose für das Gesamtjahr deutlich. Grund sind höhere Energiekosten und eine schwache Nachfrage aus der Automobilindustrie. Der Vorstand prüft den Verkauf des Geschäftsbereichs Edelstahl. Die Finanzierung ist nach Angaben des Unternehmens bis Ende 2028 gesichert."
+  },
+  {
+    "id": "de-kredit",
+    "path": "Deutscher Text",
+    "entity": "Weserland Bau GmbH",
+    "source": "Regionalpresse",
+    "date": "2026-11-12",
+    "language": "de",
+    "text": "Die Weserland Bau GmbH hat ihre Zahlungen an mehrere Subunternehmer eingestellt. Nach Angaben der Gewerkschaft warten rund 120 Beschäftigte auf ihren Oktoberlohn. Die Geschäftsführung führt Gespräche mit den finanzierenden Banken über eine Stundung. Das Unternehmen wurde 1987 in Bremen gegründet."
+  }
+]

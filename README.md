@@ -55,12 +55,42 @@ curl -s localhost:8000/predict -H 'content-type: application/json' \
 
 | Endpoint        | Description                                                        |
 |-----------------|--------------------------------------------------------------------|
-| `POST /predict` | `{"text": "...", "split_sentences": true}` → per-sentence scores and average |
-| `GET /health`   | Status, model id and package version                               |
-| `GET /docs`     | Interactive OpenAPI documentation                                  |
+| `GET /`              | Live demo (HTML): sentence highlighting, document score, Claude comparison, early-warning cockpit, ESG path, benchmark |
+| `POST /predict`       | `{"text": "...", "split_sentences": true}` → per-sentence scores and average |
+| `POST /v1/sentiment`  | `{"text": "...", "engine": "finbert" \| "claude", "language": "auto"}` → sentences, weighted document score, usage |
+| `POST /v1/compare`    | Both engines on the same text; a Claude failure is reported in place |
+| `GET /v1/portfolio`   | Fictional demo portfolio scored per news item (`?engine=claude` optional, cached) |
+| `GET /v1/benchmark`   | Latest benchmark report (`benchmark/results/latest.json`) |
+| `GET /health`         | Status, model ids, whether Claude credentials are configured |
+| `GET /docs`           | Interactive OpenAPI documentation                                  |
+
+Document score: `S = Σ wᵢ·sᵢ / Σ wᵢ` with `sᵢ = P(pos) − P(neg)` and `wᵢ = 1 − P(neutral)`, so neutral boilerplate does
+not dilute a clear signal. The plain mean is returned as well.
 
 Environment variables: `FINBERT_MODEL` (model id or path, default `ProsusAI/finbert`), `FINBERT_DEVICE`
-(`cpu`, `cuda`, `mps`), `FINBERT_CORS_ORIGINS` (comma separated, default `*`).
+(`cpu`, `cuda`, `mps`), `FINBERT_CORS_ORIGINS` (comma separated, default `*`), `ANTHROPIC_API_KEY` (enables Claude),
+`CLAUDE_MODEL` (default `claude-opus-5-5`), `FINBERT_BENCHMARK_RESULTS` (path of the report shown in the demo).
+
+### Claude and the benchmark
+
+FinBERT stays the default and runs locally. Claude is only called on request (demo switch or `engine: "claude"`):
+it rates German and English sentences, returns a one-sentence reasoning in German and an E/S/G tag. Its
+probabilities are self-reported confidence, not calibrated model outputs.
+
+```bash
+export ANTHROPIC_API_KEY=...
+uv run finbert benchmark                       # 300 PhraseBank sentences + German reference set, both engines
+uv run finbert benchmark --no-claude           # FinBERT only, no API cost
+uv run finbert benchmark --phrasebank path/to/Sentences_AllAgree.txt --n 500
+```
+
+The report (`benchmark/results/latest.json`) holds accuracy, macro-F1, confusion matrix, seconds and USD per 1,000
+sentences, the share of explained predictions and example disagreements; the demo shows it under "Modellvergleich".
+Financial PhraseBank (CC BY-NC-SA 3.0) is downloaded from the Hugging Face Hub and not shipped here.
+
+`benchmark/data/german_reference.csv` is a German reference set with labels proposed by Claude (`status`
+`vorgeschlagen`). A domain expert reviews each row and sets `status` to `geprüft` (and corrects `label` where needed).
+Because Claude proposed the labels, Claude's German score is biased upwards; the demo says so.
 
 ### Docker
 

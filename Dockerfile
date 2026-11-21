@@ -17,10 +17,12 @@ RUN uv pip install "torch>=2.4" --index-url https://download.pytorch.org/whl/cpu
 COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 RUN uv pip install .
+COPY benchmark ./benchmark
 
 # Bake the model into the image so containers start without network access.
 RUN python -c "from transformers import pipeline; pipeline('text-classification', model='${FINBERT_MODEL}')"
 
+# Claude needs ANTHROPIC_API_KEY at runtime: docker run -e ANTHROPIC_API_KEY -p 8000:8000 finbert
 RUN useradd --create-home app && chown -R app /opt/hf-cache
 USER app
 

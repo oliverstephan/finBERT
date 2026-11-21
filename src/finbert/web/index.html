@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FinBERT Sentiment-Radar</title>
+<style>
+/* Live-Demo auf der FinBERT-API. Gleicher Aufbau wie die Konzeptpräsentation, aber alle Werte kommen vom Modell. */
+:root{
+  --bg:#f5f7f8; --surface:#ffffff; --ink:#14212b; --muted:#566673; --line:#d9e1e6;
+  --accent:#0d5c6b; --accent-soft:#e2eff1; --claude:#8a4b14; --claude-soft:#f6ebe0;
+  --pos:#1d7a4c; --pos-soft:#e3f2ea; --neg:#b3362d; --neg-soft:#f8e4e1; --neu:#7b8790; --neu-soft:#eceff1;
+  --warn:#a86a00; --warn-soft:#fbf1dc;
+  --f-display:"Archivo","Segoe UI",system-ui,sans-serif; --f-body:"Inter","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f161b; --surface:#16212a; --ink:#e4ecf0; --muted:#97a7b2; --line:#2a3943;
+  --accent:#5ec2d2; --accent-soft:#16343b; --claude:#e9a96a; --claude-soft:#3a2a1b;
+  --pos:#5cc78f; --pos-soft:#173226; --neg:#f0857a; --neg-soft:#3a1f1c; --neu:#93a1ab; --neu-soft:#222e36;
+  --warn:#e3a640; --warn-soft:#3a2e17; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161b; --surface:#16212a; --ink:#e4ecf0; --muted:#97a7b2; --line:#2a3943;
+  --accent:#5ec2d2; --accent-soft:#16343b; --claude:#e9a96a; --claude-soft:#3a2a1b;
+  --pos:#5cc78f; --pos-soft:#173226; --neg:#f0857a; --neg-soft:#3a1f1c; --neu:#93a1ab; --neu-soft:#222e36;
+  --warn:#e3a640; --warn-soft:#3a2e17; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(1.9rem,4.6vw,2.9rem);font-weight:800;line-height:1.08}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.02rem;font-weight:600}
+p{margin:0;max-width:68ch}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.muted{color:var(--muted)}
+nav.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;gap:4px;align-items:center;overflow-x:auto;padding-block:8px;scrollbar-width:none}
+nav.top a{font-size:.82rem;color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:6px;white-space:nowrap}
+nav.top a:hover,nav.top a:focus-visible{color:var(--ink);background:var(--accent-soft);outline:none}
+nav.top .sep{flex:1}
+.health{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);white-space:nowrap;display:flex;gap:10px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle;background:var(--neu)}
+.dot.ok{background:var(--pos)} .dot.off{background:var(--warn)} .dot.err{background:var(--neg)}
+header.hero{padding-block:44px 32px}
+.hero-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:36px;align-items:end}
+.hero p.lead{font-size:1.08rem;margin-top:14px;color:var(--muted)}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.facts div{background:var(--surface);padding:12px 14px}
+.facts b{display:block;font-family:var(--f-display);font-size:1.25rem;font-weight:700}
+.facts span{font-size:.8rem;color:var(--muted)}
+section{padding-block:40px;border-top:1px solid var(--line)}
+.sec-head{display:grid;gap:8px;margin-bottom:22px}
+.note{font-size:.8rem;color:var(--muted);margin-top:12px}
+.btn{font:inherit;font-size:.85rem;padding:7px 12px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+.btn:disabled{opacity:.55;cursor:default}
+.btn:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.toolbar .sep{flex:1}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer;user-select:none}
+.switch input[type=checkbox]{appearance:none;width:36px;height:20px;border-radius:10px;background:var(--line);position:relative;cursor:pointer;margin:0;transition:background .15s}
+.switch input[type=checkbox]::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--surface);transition:left .15s}
+.switch input[type=checkbox]:checked{background:var(--claude)}
+.switch input[type=checkbox]:checked::after{left:18px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+textarea{width:100%;min-height:96px;resize:vertical;font:inherit;font-size:.92rem;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.demo-grid{display:grid;grid-template-columns:1fr 280px;gap:18px;margin-top:14px}
+.demo-grid>*,.cockpit>*,.two>*{min-width:0}
+.doc-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.82rem;color:var(--muted);margin-bottom:10px}
+.sent{display:grid;grid-template-columns:4px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.sent:first-of-type{border-top:0}
+.sent .bar{border-radius:2px}
+.sent .txt{font-size:.95rem}
+.sent .row{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin-top:6px;font-size:.78rem}
+.eng{font-family:var(--f-mono);font-size:.68rem;color:var(--muted);min-width:52px}
+.pill{font-family:var(--f-mono);font-size:.72rem;padding:2px 8px;border-radius:999px;font-weight:500;white-space:nowrap}
+.pill.positive{background:var(--pos-soft);color:var(--pos)}
+.pill.negative{background:var(--neg-soft);color:var(--neg)}
+.pill.neutral{background:var(--neu-soft);color:var(--neu)}
+.pill.cat{background:var(--accent-soft);color:var(--accent)}
+.pill.diff{background:var(--warn-soft);color:var(--warn)}
+.probs{display:flex;height:6px;width:110px;border-radius:3px;overflow:hidden;background:var(--neu-soft)}
+.probs i{display:block;height:100%}
+.reason{margin-top:8px;font-size:.84rem;padding:8px 10px;border-left:2px solid var(--claude);background:var(--claude-soft);border-radius:0 6px 6px 0}
+.reason b{font-weight:600;color:var(--claude)}
+.warnbox{padding:10px 12px;border:1px solid var(--warn);background:var(--warn-soft);color:var(--ink);border-radius:8px;font-size:.86rem;margin-bottom:10px}
+.errbox{padding:10px 12px;border:1px dashed var(--neg);border-radius:8px;font-size:.86rem;color:var(--neg);margin-top:8px}
+.dim{opacity:.55}
+.score-card{display:grid;gap:14px;align-content:start}
+.gauge{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--neg),var(--neu-soft) 50%,var(--pos))}
+.gauge i{position:absolute;top:-5px;width:4px;height:20px;border-radius:2px;transform:translateX(-2px)}
+.gauge-scale{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted)}
+.big{font-family:var(--f-display);font-size:2.2rem;font-weight:800;line-height:1}
+.scores{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.scores .lbl{font-size:.76rem;color:var(--muted)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:.82rem}
+.kv span:nth-child(even){font-family:var(--f-mono);text-align:right}
+.kv.sepd{border-top:1px solid var(--line);padding-top:10px}
+.spinner{color:var(--muted);font-size:.9rem;padding:16px 0}
+.cockpit{display:grid;grid-template-columns:290px 1fr;gap:18px}
+.cp-list{display:grid;gap:6px;align-content:start}
+.cp-item{display:grid;grid-template-columns:1fr auto;gap:2px 8px;text-align:left;font:inherit;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.cp-item[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.cp-item small{grid-column:1/-1;color:var(--muted);font-size:.76rem}
+.status{font-family:var(--f-mono);font-size:.7rem;padding:2px 7px;border-radius:999px;align-self:center;white-space:nowrap}
+.status.alarm{background:var(--neg-soft);color:var(--neg)}
+.status.watch{background:var(--warn-soft);color:var(--warn)}
+.status.ok{background:var(--pos-soft);color:var(--pos)}
+.chart-wrap{overflow-x:auto}
+svg text{font-family:var(--f-mono)}
+.news{display:grid;gap:0;margin-top:12px}
+.news-row{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:baseline;font-size:.85rem;padding:7px 0;border-top:1px solid var(--line)}
+.news-row .t{min-width:0}
+.esg-row{display:grid;grid-template-columns:96px 70px 1fr auto;gap:10px;align-items:baseline;font-size:.85rem;padding:8px 0;border-top:1px solid var(--line)}
+.esg-row>*{min-width:0}
+.formula{font-family:var(--f-mono);font-size:.95rem;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto;white-space:nowrap}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+thead th{border-top:0;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;white-space:nowrap}
+td.num{font-family:var(--f-mono);text-align:right;white-space:nowrap}
+.metric-bar{display:inline-block;height:6px;border-radius:3px;vertical-align:middle;margin-left:8px}
+.bench-ds{display:grid;gap:12px;margin-bottom:26px}
+.bench-head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px;align-content:start}
+.mcard .vs{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:.84rem}
+.mcard .track{height:8px;border-radius:4px;background:var(--neu-soft);overflow:hidden}
+.mcard .track i{display:block;height:100%;border-radius:4px}
+.dis{font-size:.86rem;padding:10px 0;border-top:1px solid var(--line);display:grid;gap:4px}
+footer{padding-block:28px 44px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+@media (max-width:860px){.hero-grid,.demo-grid,.cockpit,.two{grid-template-columns:1fr}.cards3{grid-template-columns:1fr}}
+@media (max-width:520px){.esg-row{grid-template-columns:1fr auto}.esg-row .d{display:none}.news-row{grid-template-columns:1fr auto}.news-row .d{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<nav class="top" aria-label="Kapitel"><div class="wrap">
+  <a href="#demo">Live-Analyse</a><a href="#cockpit">Frühwarnung &amp; ESG</a><a href="#vergleich">Modellvergleich</a><a href="#score">Score</a>
+  <span class="sep"></span>
+  <span class="health" id="health"><span><span class="dot"></span>API …</span></span>
+</div></nav>
+
+<header class="hero"><div class="wrap hero-grid">
+  <div>
+    <div class="eyebrow">Live-Demo · läuft auf der FinBERT-API</div>
+    <h1 style="margin-top:10px">Textsignale messbar machen für Frühwarnung und ESG-Risiko</h1>
+    <p class="lead">FinBERT bewertet jeden Satz lokal als positiv, negativ oder neutral. Auf Klick prüft Claude denselben Text, begründet jedes Urteil und versteht auch deutsche Meldungen.</p>
+  </div>
+  <div class="facts" aria-label="Eckdaten">
+    <div><b>3 Klassen</b><span>positiv, negativ, neutral je Satz</span></div>
+    <div><b class="mono">−1 … +1</b><span>Score je Satz und Dokument</span></div>
+    <div><b>Lokal</b><span>FinBERT auf CPU, ohne Internet</span></div>
+    <div><b>Auf Klick</b><span>Claude für Deutsch und Begründungen</span></div>
+  </div>
+</div></header>
+
+<main>
+<section id="demo"><div class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">01 · Live-Analyse</div>
+    <h2>Jeder Satz bekommt eine Bewertung, das Dokument einen Score</h2>
+    <p class="muted">Beispiel wählen oder eigenen Text einfügen. Mit dem Schalter läuft Claude parallel: Sie sehen beide Urteile nebeneinander, Abweichungen sind markiert.</p>
+  </div>
+  <div class="toolbar" role="group" aria-label="Beispiel wählen" id="ex-buttons"></div>
+  <textarea id="text" aria-label="Text für die Analyse"></textarea>
+  <div class="toolbar" style="margin-top:10px">
+    <button class="btn primary" id="run">Analysieren</button>
+    <label class="switch" for="llm"><input type="checkbox" id="llm"> Claude zuschalten</label>
+    <span class="sep"></span>
+    <span class="mono muted" style="font-size:.78rem" id="lang-hint"></span>
+  </div>
+  <div class="demo-grid">
+    <div class="panel" id="doc"><p class="muted">Noch keine Analyse.</p></div>
+    <aside class="panel score-card" id="scorecard" aria-live="polite"></aside>
+  </div>
+  <p class="note">FinBERT-Wahrscheinlichkeiten sind Modellausgaben (Softmax). Claudes Werte sind eigene Konfidenzschätzungen und nicht kalibriert. Beispieltexte und Unternehmen sind fiktiv.</p>
+</div></section>
+
+<section id="cockpit"><div class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">02 · Zwei Fachpfade</div>
+    <h2>Ein Warnsignal, sobald der 30-Tage-Mittelwert unter die Schwelle fällt</h2>
+    <p class="muted">Jede Meldung des Demo-Portfolios wurde live bewertet. Das Cockpit verdichtet die Dokument-Scores je Gegenpartei, der ESG-Pfad ordnet die Meldungen nach Umwelt, Soziales und Governance.</p>
+  </div>
+  <div class="toolbar" role="group" aria-label="Pfad wählen">
+    <button class="btn" data-path="fw" aria-pressed="true">Kredit-Frühwarnung</button>
+    <button class="btn" data-path="esg" aria-pressed="false">ESG-Risiko</button>
+    <button class="btn" id="cp-claude" title="Portfolio mit Claude neu bewerten (kostet API-Aufrufe)">Mit Claude bewerten</button>
+    <span class="sep"></span>
+    <label class="switch" for="thr-range"><span class="mono" id="thr-label">Schwelle −0,30</span><input type="range" id="thr-range" min="-60" max="-10" step="5" value="-30" style="width:120px"></label>
+  </div>
+  <div class="cockpit">
+    <div class="cp-list" id="cp-list" role="group" aria-label="Gegenparteien"><p class="spinner">Portfolio wird bewertet …</p></div>
+    <div class="panel">
+      <div id="cp-title" style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;margin-bottom:8px"></div>
+      <div class="chart-wrap" id="chart-wrap"><svg id="chart" viewBox="0 0 640 250" width="100%" role="img" aria-label="Sentiment-Verlauf"></svg></div>
+      <div id="cp-detail" class="news"></div>
+    </div>
+  </div>
+  <p class="note" id="cp-note">Fiktives Portfolio mit erfundenen Meldungen.</p>
+</div></section>
+
+<section id="vergleich"><div class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">03 · Modellvergleich</div>
+    <h2>FinBERT gegen Claude: Treffsicherheit, Kosten, Begründung</h2>
+    <p class="muted">Gemessen auf der Financial PhraseBank (englisch, von Fachleuten annotiert) und einem deutschen Referenzsatz. Die deutschen Labels hat Claude vorgeschlagen, ein Fachexperte prüft sie. Der deutsche Satz ist deshalb eine geprüfte Referenz und kein unabhängiger Goldstandard.</p>
+  </div>
+  <div id="bench"><p class="spinner">Lade Ergebnisse …</p></div>
+</div></section>
+
+<section id="score"><div class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">04 · Berechnung</div>
+    <h2>Neutrale Sätze verwässern das Signal nicht</h2>
+  </div>
+  <div class="two">
+    <div style="display:grid;gap:10px;align-content:start">
+      <div class="formula">s<sub>i</sub> = P(positiv) − P(negativ)</div>
+      <div class="formula">S = Σ w<sub>i</sub>·s<sub>i</sub> / Σ w<sub>i</sub>, &nbsp; w<sub>i</sub> = 1 − P(neutral)</div>
+    </div>
+    <div style="display:grid;gap:10px;align-content:start">
+      <p>Zwei klar negative und acht neutrale Sätze ergeben mit einfachem Mittelwert nur etwa −0,18. Mit Gewichtung bleibt das Signal bei etwa −0,9 sichtbar. Die Scorekarte zeigt beide Werte.</p>
+      <p class="muted">Jedes Ergebnis trägt Engine, Modell, Version und Zeitstempel und ist damit reproduzierbar.</p>
+    </div>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap">FinBERT basiert auf Araci (2019) und dem Modell ProsusAI/finbert, Apache-Lizenz 2.0. Financial PhraseBank: Malo et al. (2014), CC BY-NC-SA 3.0. Alle Unternehmen und Meldungen der Demo sind fiktiv.</div></footer>
+
+<script>
+(function(){
+"use strict";
+const API = location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (v,d=2) => v==null||isNaN(v) ? "–" : (v<0?"−":v>0?"+":"±")+Math.abs(v).toFixed(d).replace(".",",");
+const num = (v,d=2) => v==null ? "–" : Number(v).toFixed(d).replace(".",",");
+const pct = v => v==null ? "–" : (v*100).toFixed(1).replace(".",",")+" %";
+const LBL = {positive:"positiv",negative:"negativ",neutral:"neutral"};
+const ESGL = {E:"Umwelt",S:"Soziales",G:"Governance"};
+const COL = l => l==="positive"?"var(--pos)":l==="negative"?"var(--neg)":"var(--neu)";
+const dDE = iso => { const [y,m,d] = iso.split("-"); return `${d}.${m}.${y}`; };
+
+async function api(path, body){
+  const r = await fetch(API+path, body ? {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)} : {});
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.detail || `HTTP ${r.status}`);
+  return j;
+}
+
+/* ------------------------------------------------------------------ Health */
+let health = null;
+api("/health").then(h => {
+  health = h;
+  $("#health").innerHTML = `<span><span class="dot ok"></span>FinBERT · ${esc(h.model)}</span>` +
+    `<span><span class="dot ${h.claude_configured?"ok":"off"}"></span>Claude · ${h.claude_configured?esc(h.claude_model):"kein API-Schlüssel"}</span>`;
+}).catch(() => { $("#health").innerHTML = `<span><span class="dot err"></span>API nicht erreichbar</span>`; });
+
+/* ------------------------------------------------------------ Live analysis */
+let examples = [], curEx = null;
+function setExample(ex){
+  curEx = ex; $("#text").value = ex.text;
+  document.querySelectorAll("[data-ex]").forEach(b => b.setAttribute("aria-pressed", b.dataset.ex===ex.id));
+  run();
+}
+api("/v1/examples").then(list => {
+  examples = list;
+  $("#ex-buttons").innerHTML = list.map(e => `<button class="btn" data-ex="${esc(e.id)}" aria-pressed="false" title="${esc(e.entity)}">${esc(e.path)}${e.language==="de"?" · "+esc(e.entity.split(" ")[0]):""}</button>`).join("");
+  document.querySelectorAll("[data-ex]").forEach(b => b.addEventListener("click", () => setExample(examples.find(e => e.id===b.dataset.ex))));
+  if(list.length) setExample(list[0]);
+}).catch(e => { $("#doc").innerHTML = `<div class="errbox">${esc(e.message)}</div>`; });
+
+$("#text").addEventListener("input", () => { curEx = null; document.querySelectorAll("[data-ex]").forEach(b => b.setAttribute("aria-pressed", false)); });
+$("#run").addEventListener("click", run);
+$("#llm").addEventListener("change", run);
+
+let runId = 0;
+async function run(){
+  const text = $("#text").value.trim(); if(!text) return;
+  const id = ++runId, withClaude = $("#llm").checked;
+  $("#run").disabled = true;
+  $("#doc").innerHTML = `<p class="spinner">${withClaude?"FinBERT und Claude bewerten …":"FinBERT bewertet …"}</p>`;
+  $("#scorecard").innerHTML = "";
+  try{
+    let fb, cl = null;
+    if(withClaude){ const r = await api("/v1/compare", {text}); fb = r.finbert; cl = r.claude; }
+    else fb = await api("/v1/sentiment", {text, engine:"finbert"});
+    if(id !== runId) return;
+    renderDoc(fb, cl); renderScore(fb, cl);
+  }catch(e){ if(id===runId) $("#doc").innerHTML = `<div class="errbox">Analyse fehlgeschlagen: ${esc(e.message)}</div>`; }
+  finally{ if(id===runId) $("#run").disabled = false; }
+}
+
+function probs(s){
+  return `<span class="probs" title="P(pos) ${num(s.positive)} · P(neu) ${num(s.neutral)} · P(neg) ${num(s.negative)}"><i style="width:${s.positive*100}%;background:var(--pos)"></i><i style="width:${s.neutral*100}%;background:var(--neu)"></i><i style="width:${s.negative*100}%;background:var(--neg)"></i></span>`;
+}
+function engineRow(name, s, dim){
+  return `<div class="row${dim?" dim":""}"><span class="eng">${name}</span><span class="pill ${s.prediction}">${LBL[s.prediction]}</span>${s.esg?`<span class="pill cat">ESG · ${s.esg}</span>`:""}${probs(s)}<span class="mono muted">s = ${fmt(s.sentiment_score)}</span><span class="mono muted">w = ${num(s.weight)}</span></div>`;
+}
+function renderDoc(fb, cl){
+  const de = fb.language === "de", claudeOk = cl && !cl.error;
+  $("#lang-hint").textContent = `Sprache erkannt: ${de?"Deutsch":"Englisch"} · ${fb.sentences.length} Sätze`;
+  let h = "";
+  if(curEx) h += `<div class="doc-meta"><b style="color:var(--ink)">${esc(curEx.entity)}</b><span>${esc(curEx.source)}</span><span class="mono">${dDE(curEx.date)}</span></div>`;
+  if(de) h += `<div class="warnbox">FinBERT ist nur auf Englisch trainiert. Die FinBERT-Werte unten sind deshalb ausgegraut und nicht belastbar.${claudeOk?"":" Für deutsche Texte <b>Claude zuschalten</b>."}</div>`;
+  if(cl && cl.error) h += `<div class="errbox">Claude nicht verfügbar: ${esc(cl.error)}</div>`;
+  fb.sentences.forEach((s, i) => {
+    const c = claudeOk ? cl.sentences[i] : null;
+    const lead = c && de ? c : s;
+    const differs = c && c.prediction !== s.prediction;
+    h += `<div class="sent"><div class="bar" style="background:${COL(lead.prediction)}"></div><div>
+      <div class="txt">${esc(s.sentence)}${differs?` <span class="pill diff">Abweichung</span>`:""}</div>
+      ${engineRow("FinBERT", s, de)}
+      ${c ? engineRow("Claude", c, false) + `<div class="reason"><b>Claude:</b> ${esc(c.reasoning)}</div>` : ""}
+    </div></div>`;
+  });
+  $("#doc").innerHTML = h;
+}
+function gauge(v, color){ return v==null ? "" : `<i style="left:${(v+1)/2*100}%;background:${color}"></i>`; }
+function scoreColor(v){ return v==null ? "var(--muted)" : v<=-0.3 ? "var(--neg)" : v>=0.3 ? "var(--pos)" : "var(--ink)"; }
+function renderScore(fb, cl){
+  const de = fb.language === "de", claudeOk = cl && !cl.error;
+  const F = fb.document.weighted_score, C = claudeOk ? cl.document.weighted_score : null;
+  const lead = claudeOk && de ? cl : fb, counts = lead.document.counts;
+  let h = `<div class="eyebrow">Dokument-Score</div><div class="scores">
+    <div><div class="lbl">FinBERT</div><div class="big mono${de?" dim":""}" style="color:${scoreColor(F)}">${fmt(F)}</div></div>
+    <div><div class="lbl">Claude</div><div class="big mono" style="color:${scoreColor(C)}">${claudeOk?fmt(C):"–"}</div></div></div>
+    <div><div class="gauge">${gauge(F, de?"var(--neu)":"var(--ink)")}${claudeOk?gauge(C,"var(--claude)"):""}</div><div class="gauge-scale mono"><span>−1</span><span>0</span><span>+1</span></div></div>
+    <div class="kv"><span>einfacher Mittelwert</span><span>${fmt(lead.document.mean_score)}</span><span>Sätze negativ</span><span>${counts.negative}</span><span>Sätze positiv</span><span>${counts.positive}</span><span>Sätze neutral</span><span>${counts.neutral}</span>`;
+  if(claudeOk){
+    const agree = fb.sentences.filter((s,i) => s.prediction===cl.sentences[i].prediction).length;
+    h += `<span>Übereinstimmung</span><span>${agree}/${fb.sentences.length}</span>`;
+  }
+  h += `</div><div class="kv sepd"><span>FinBERT</span><span>${esc(fb.model)}</span><span>Laufzeit</span><span>${num(fb.seconds*1000,0)} ms</span><span>Kosten</span><span>0,00 USD</span>`;
+  if(claudeOk){
+    const u = cl.usage;
+    h += `<span>Claude</span><span>${esc(cl.model)}</span><span>Laufzeit</span><span>${num(cl.seconds,1)} s</span><span>Tokens</span><span>${u.input_tokens}+${u.output_tokens}</span><span>Kosten</span><span>${num(u.cost_usd,4)} USD</span>`;
+  }
+  h += `<span>Version</span><span>${esc(fb.version)}</span><span>Zeit (UTC)</span><span>${esc(fb.timestamp.slice(11,19))}</span></div>`;
+  $("#scorecard").innerHTML = h;
+}
+
+/* ------------------------------------------------------------------ Cockpit */
+const WINDOW_DAYS = 30, SPAN_DAYS = 100;
+let portfolio = null, sel = 0, path = "fw", thr = -0.30;
+const day = iso => Date.parse(iso+"T00:00:00Z")/864e5;
+function series(cp){
+  const pts = cp.news.map(n => ({t:day(n.date), v:n.score ?? 0, n})).sort((a,b) => a.t-b.t);
+  pts.forEach(p => { const w = pts.filter(q => q.t<=p.t && q.t>p.t-WINDOW_DAYS); p.ma = w.reduce((s,q)=>s+q.v,0)/w.length; });
+  return pts;
+}
+function status(cp){
+  const last = series(cp).at(-1).ma;
+  return last<=thr ? ["alarm","Warnsignal"] : last<=thr+0.15 ? ["watch","Beobachten"] : ["ok","Unauffällig"];
+}
+function negEsg(cp){ return cp.news.flatMap(n => n.sentences.filter(s => s.esg && s.prediction==="negative")); }
+function renderList(){
+  $("#cp-list").innerHTML = portfolio.counterparties.map((c,i) => {
+    const [k,t] = status(c), ne = negEsg(c).length, ma = series(c).at(-1).ma;
+    const badge = path==="fw" ? `<span class="status ${k}">${t}</span>` : `<span class="status ${ne>1?"alarm":ne?"watch":"ok"}">${ne} negativ</span>`;
+    return `<button class="cp-item" data-i="${i}" aria-pressed="${i===sel}"><span>${esc(c.name)}</span>${badge}<small>${esc(c.sector)} · ${c.exposure_eur_m} Mio. EUR · 30-Tage-Mittel <span class="mono">${fmt(ma)}</span></small></button>`;
+  }).join("");
+  document.querySelectorAll(".cp-item").forEach(b => b.addEventListener("click", () => { sel = +b.dataset.i; renderCockpit(); }));
+}
+function renderChart(cp){
+  const pts = series(cp), W=640,H=250,L=44,R=16,T=16,B=30;
+  const end = day(portfolio.as_of), start = end-SPAN_DAYS;
+  const x = t => L+(t-start)/(end-start)*(W-L-R), y = v => T+(1-(v+1)/2)*(H-T-B);
+  let s = "";
+  [-1,-.5,0,.5,1].forEach(v => { s += `<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="10.5" fill="var(--muted)">${fmt(v,1)}</text>`; });
+  for(let t=start; t<=end; t+=25){ const d = new Date(t*864e5); s += `<text x="${x(t)}" y="${H-9}" text-anchor="middle" font-size="10.5" fill="var(--muted)">${d.getUTCDate()}.${d.getUTCMonth()+1}.</text>`; }
+  s += `<rect x="${L}" y="${y(thr)}" width="${W-L-R}" height="${y(-1)-y(thr)}" fill="var(--neg-soft)" opacity=".6"/>`;
+  s += `<line x1="${L}" x2="${W-R}" y1="${y(thr)}" y2="${y(thr)}" stroke="var(--neg)" stroke-dasharray="4 4"/><text x="${W-R}" y="${y(thr)-6}" text-anchor="end" font-size="10.5" fill="var(--neg)">Schwelle ${fmt(thr)}</text>`;
+  s += `<path d="${pts.map((p,i)=>(i?"L":"M")+x(p.t).toFixed(1)+" "+y(p.ma).toFixed(1)).join("")}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  pts.forEach(p => { s += `<circle cx="${x(p.t)}" cy="${y(p.v)}" r="4" fill="${p.v<=-0.3?"var(--neg)":p.v>=0.3?"var(--pos)":"var(--neu)"}" stroke="var(--surface)" stroke-width="1.5"><title>${dDE(p.n.date)} · ${esc(p.n.title)} · ${fmt(p.v)}</title></circle>`; });
+  const fi = pts.find(p => p.ma<=thr);
+  if(fi) s += `<line x1="${x(fi.t)}" x2="${x(fi.t)}" y1="${T}" y2="${H-B}" stroke="var(--neg)"/><text x="${x(fi.t)-6}" y="${T+10}" text-anchor="end" font-size="10.5" fill="var(--neg)">erstes Signal ${dDE(fi.n.date).slice(0,6)}</text>`;
+  $("#chart").innerHTML = s;
+}
+function renderCockpit(){
+  if(!portfolio) return;
+  renderList();
+  const cp = portfolio.counterparties[sel], [k,t] = status(cp);
+  const eng = portfolio.engine==="claude" ? "Claude" : "FinBERT";
+  $("#cp-title").innerHTML = `<h3>${esc(cp.name)}</h3>` + (path==="fw"
+    ? `<span class="status ${k}">${t}</span><span class="mono muted" style="font-size:.8rem">Punkte: Meldung · Linie: 30-Tage-Mittel · ${eng}</span>`
+    : `<span class="mono muted" style="font-size:.8rem">Sätze mit ESG-Bezug · Zuordnung ${portfolio.engine==="claude"?"durch Claude":"per Stichwortliste"}</span>`);
+  $("#chart-wrap").hidden = path!=="fw";
+  if(path==="fw"){
+    renderChart(cp);
+    $("#cp-detail").innerHTML = [...cp.news].reverse().map(n => `<div class="news-row"><span class="mono muted d">${dDE(n.date).slice(0,6)}</span><span class="t">${esc(n.title)}</span><span class="mono" style="color:${scoreColor(n.score)}">${fmt(n.score)}</span></div>`).join("");
+  } else {
+    const rows = cp.news.flatMap(n => n.sentences.filter(s => s.esg).map(s => ({n, s})));
+    $("#cp-detail").innerHTML = rows.length ? rows.map(({n,s}) => `<div class="esg-row"><span class="pill cat">${ESGL[s.esg]}</span><span class="mono muted d">${dDE(n.date).slice(0,6)}</span><span>${esc(s.sentence)}${s.reasoning?`<div class="muted" style="font-size:.8rem;margin-top:2px">${esc(s.reasoning)}</div>`:""}</span><span class="mono" style="color:${COL(s.prediction)}">${fmt(s.sentiment_score)}</span></div>`).join("")
+      : `<p class="muted" style="padding:10px 0">Keine Meldungen mit ESG-Bezug.</p>`;
+  }
+}
+async function loadPortfolio(engine){
+  $("#cp-list").innerHTML = `<p class="spinner">${engine==="claude"?"Claude bewertet das Portfolio, das dauert etwa eine Minute …":"Portfolio wird bewertet …"}</p>`;
+  try{
+    portfolio = await api(`/v1/portfolio?engine=${engine}`);
+    const n = portfolio.counterparties.reduce((s,c) => s+c.news.length, 0);
+    $("#cp-note").textContent = `Fiktives Portfolio, ${n} erfundene Meldungen, bewertet mit ${engine==="claude"?"Claude":"FinBERT"} (Stand ${dDE(portfolio.as_of)}).`;
+    $("#cp-claude").textContent = engine==="claude" ? "Mit FinBERT bewerten" : "Mit Claude bewerten";
+    renderCockpit();
+  }catch(e){
+    $("#cp-list").innerHTML = `<div class="errbox">${esc(e.message)}</div>`;
+    if(engine==="claude" && portfolio) setTimeout(renderCockpit, 3000);
+  }
+}
+document.querySelectorAll("[data-path]").forEach(b => b.addEventListener("click", () => {
+  path = b.dataset.path; document.querySelectorAll("[data-path]").forEach(x => x.setAttribute("aria-pressed", x===b));
+  $("#thr-range").disabled = path!=="fw"; renderCockpit();
+}));
+$("#thr-range").addEventListener("input", e => { thr = +e.target.value/100; $("#thr-label").textContent = "Schwelle "+fmt(thr); renderCockpit(); });
+$("#cp-claude").addEventListener("click", () => loadPortfolio(portfolio && portfolio.engine==="claude" ? "finbert" : "claude"));
+loadPortfolio("finbert");
+
+/* --------------------------------------------------------------- Benchmark */
+const ENG = {finbert:{name:"FinBERT", color:"var(--accent)"}, claude:{name:"Claude", color:"var(--claude)"}};
+function metricCard(title, ds, key, f, better, hint){
+  const engs = Object.entries(ds.engines), max = Math.max(...engs.map(([,r]) => r[key]), 1e-9);
+  return `<div class="mcard"><h3>${title}</h3><div class="vs">${engs.map(([e,r]) => `<span>${ENG[e].name}</span><span class="track"><i style="width:${Math.max(2, r[key]/max*100)}%;background:${ENG[e].color}"></i></span><span class="mono">${f(r[key])}</span>`).join("")}</div><span class="muted" style="font-size:.78rem">${hint}</span></div>`;
+}
+function renderBench(b){
+  let h = "";
+  for(const [name, ds] of Object.entries(b.datasets)){
+    const status = ds.status ? Object.entries(ds.status).map(([k,v]) => `${v} ${k}`).join(", ") : null;
+    h += `<div class="bench-ds"><div class="bench-head"><h3>${esc(ds.title||name)}</h3><span class="mono muted" style="font-size:.8rem">n = ${ds.n} · ${esc(ds.reference==="gold"?"Goldstandard":ds.reference)}${status?" · Labels: "+esc(status):""}</span></div>`;
+    if(ds.reference && ds.reference!=="gold") h += `<div class="warnbox">Claude hat die Labels dieses Satzes vorgeschlagen. Claudes Treffsicherheit ist hier deshalb nach oben verzerrt${ds.status && ds.status.vorgeschlagen?", zumal die Prüfung noch aussteht":""}.</div>`;
+    h += `<div class="cards3">
+      ${metricCard("Treffsicherheit", ds, "macro_f1", v => num(v), "high", "Macro-F1, alle drei Klassen gleich gewichtet")}
+      ${metricCard("Kosten je 1.000 Sätze", ds, "cost_usd_per_1000", v => num(v,2)+" USD", "low", "API-Kosten; FinBERT läuft lokal ohne Lizenzkosten")}
+      ${metricCard("Begründung", ds, "explained_share", pct, "high", "Anteil der Sätze mit nachvollziehbarer Begründung")}
+    </div>`;
+    h += `<div class="table-wrap"><table><thead><tr><th>Modell</th><th style="text-align:right">Accuracy</th><th style="text-align:right">Macro-F1</th><th style="text-align:right">F1 negativ</th><th style="text-align:right">negativ ↔ neutral</th><th style="text-align:right">Sek. je 1.000</th><th style="text-align:right">USD je 1.000</th></tr></thead><tbody>`;
+    for(const [e, r] of Object.entries(ds.engines)) h += `<tr><td><b>${ENG[e].name}</b><br><span class="mono muted" style="font-size:.74rem">${esc(r.model)}</span></td><td class="num">${pct(r.accuracy)}</td><td class="num">${num(r.macro_f1)}</td><td class="num">${num(r.f1.negative)}</td><td class="num">${r.neg_neu_confusions}</td><td class="num">${num(r.seconds_per_1000,1)}</td><td class="num">${num(r.cost_usd_per_1000,2)}</td></tr>`;
+    h += `</tbody></table></div>`;
+    if(ds.disagreements && ds.disagreements.length){
+      h += `<details><summary style="cursor:pointer;font-size:.88rem">Beispiele, bei denen die Modelle abweichen (${ds.disagreements.length})</summary>` +
+        ds.disagreements.map(d => `<div class="dis"><span>${esc(d.sentence)}</span><span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span class="eng">Referenz</span><span class="pill ${d.gold}">${LBL[d.gold]}</span><span class="eng">FinBERT</span><span class="pill ${d.finbert}">${LBL[d.finbert]}</span><span class="eng">Claude</span><span class="pill ${d.claude}">${LBL[d.claude]}</span></span>${d.claude_reasoning?`<div class="reason"><b>Claude:</b> ${esc(d.claude_reasoning)}</div>`:""}</div>`).join("") + `</details>`;
+    }
+    h += `</div>`;
+  }
+  h += `<p class="note">Lauf vom ${esc(b.created.slice(0,10))} · Version ${esc(b.version)}. Kosten zu Anthropic-Listenpreisen; FinBERT-Laufzeit hängt von der Hardware ab.</p>`;
+  $("#bench").innerHTML = h;
+}
+api("/v1/benchmark").then(renderBench).catch(e => {
+  $("#bench").innerHTML = `<div class="panel"><p><b>Noch kein Benchmark-Lauf vorhanden.</b></p><p class="muted" style="margin-top:6px">Mit API-Schlüssel ausführen: <span class="mono">uv run finbert benchmark</span>. Das Ergebnis erscheint danach hier.</p><p class="note">${esc(e.message)}</p></div>`;
+});
+})();
+</script>
+</body>
+</html>
