@@ -1,0 +1,58 @@
+{
+  "note": "Fiktives Demo-Portfolio. Unternehmen und Meldungen sind erfunden.",
+  "as_of": "2026-11-20",
+  "counterparties": [
+    {
+      "name": "Nordhafen Logistik AG",
+      "sector": "Logistik",
+      "exposure_eur_m": 85,
+      "news": [
+        {"date": "2026-08-27", "title": "H1 results in line", "text": "Nordhafen Logistik reported first-half revenue in line with its own forecast. The company confirmed its full-year guidance."},
+        {"date": "2026-09-10", "title": "New warehouse in Gdansk", "text": "Nordhafen Logistik opened a new warehouse in Gdansk. The site adds 40,000 square metres of storage capacity."},
+        {"date": "2026-09-29", "title": "Baltic volumes soften", "text": "Freight volumes in the Baltic corridor declined in September. Management described the weakness as temporary."},
+        {"date": "2026-10-14", "title": "Key customer lost", "text": "Nordhafen Logistik lost a major automotive customer to a competitor. The contract accounted for about 9 percent of group revenue."},
+        {"date": "2026-10-30", "title": "Q3 margin pressure", "text": "Third-quarter EBITDA fell 21 percent year on year. Higher fuel and personnel costs could not be passed on to customers. Net debt rose to 3.4 times EBITDA."},
+        {"date": "2026-11-06", "title": "Port strike announced", "text": "A union announced strikes at two of Nordhafen's container terminals. The company warned of delays for customers."},
+        {"date": "2026-11-13", "title": "Guidance cut", "text": "Nordhafen Logistik cut its full-year EBITDA guidance by 18 percent. Freight volumes in the Baltic corridor fell for the third consecutive quarter."},
+        {"date": "2026-11-19", "title": "Rating review", "text": "Rating agencies have placed the issuer on review for a possible downgrade. Management confirmed that the revolving credit facility remains fully available."}
+      ]
+    },
+    {
+      "name": "Alpenstahl SE",
+      "sector": "Stahl",
+      "exposure_eur_m": 120,
+      "news": [
+        {"date": "2026-08-20", "title": "Hydrogen plant on schedule", "text": "Alpenstahl said construction of its hydrogen-based direct reduction plant is on schedule. Public funding of 300 million euros has been approved."},
+        {"date": "2026-09-08", "title": "Order intake stable", "text": "Order intake in the third quarter was stable compared with the previous quarter. Prices for flat steel remained under pressure."},
+        {"date": "2026-09-25", "title": "Energy costs rise", "text": "Alpenstahl warned that higher electricity prices will weigh on fourth-quarter earnings. The company is negotiating new long-term supply contracts."},
+        {"date": "2026-10-16", "title": "CFO resigns", "text": "The chief financial officer of Alpenstahl resigned with immediate effect. No successor has been named."},
+        {"date": "2026-10-29", "title": "Q3 loss", "text": "Alpenstahl posted an operating loss of 42 million euros in the third quarter. Weak demand from the automotive industry hit volumes."},
+        {"date": "2026-11-18", "title": "Profit warning", "text": "Alpenstahl significantly lowered its outlook for the full year. The board is reviewing the sale of the stainless steel division. Financing is secured until the end of 2028, the company said."}
+      ]
+    },
+    {
+      "name": "Rheinwerk Energie AG",
+      "sector": "Energie",
+      "exposure_eur_m": 60,
+      "news": [
+        {"date": "2026-08-25", "title": "Wind portfolio expanded", "text": "Rheinwerk Energie acquired three onshore wind farms with a total capacity of 180 megawatts. The deal strengthens its renewable share."},
+        {"date": "2026-09-17", "title": "Solid H1", "text": "Rheinwerk reported a solid first half with adjusted EBITDA up 7 percent. The dividend policy was confirmed."},
+        {"date": "2026-10-09", "title": "Coal exit date", "text": "Rheinwerk confirmed it will close its last coal-fired plant in 2030. The company operates 14 power plants in Germany and the Netherlands."},
+        {"date": "2026-10-28", "title": "Safety violations reported", "text": "A labour union reported repeated safety violations at a subcontractor site. Rheinwerk said it has started an internal review."},
+        {"date": "2026-11-12", "title": "Emissions investigation", "text": "Regulators opened an investigation into emissions reporting at two Rheinwerk plants. Rheinwerk said it will publish an independent audit of its methane data in June."},
+        {"date": "2026-11-19", "title": "New compliance chief", "text": "The board appointed a new chief compliance officer with effect from 1 January. Analysts welcomed the move."}
+      ]
+    },
+    {
+      "name": "Baltic Retail Group",
+      "sector": "Handel",
+      "exposure_eur_m": 45,
+      "news": [
+        {"date": "2026-08-21", "title": "Strong summer season", "text": "Baltic Retail Group reported strong summer sales across its 230 stores. Online revenue grew by 14 percent."},
+        {"date": "2026-09-23", "title": "Supplier conditions criticised", "text": "A report criticised working conditions at two of the group's textile suppliers. Baltic Retail said it would audit both suppliers."},
+        {"date": "2026-10-21", "title": "Bond placed", "text": "Baltic Retail successfully placed a 250 million euro bond. The issue was more than three times oversubscribed."},
+        {"date": "2026-11-17", "title": "Outlook raised", "text": "Baltic Retail Group raises its outlook for the 2026 financial year. Like-for-like sales grew by 6.4 percent in the third quarter, well ahead of market expectations."}
+      ]
+    }
+  ]
+}

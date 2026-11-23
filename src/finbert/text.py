@@ -44,6 +44,38 @@ _ABBREVIATIONS = {
     "st",
     "jr",
     "sr",
+    # German
+    "z.b",
+    "bzw",
+    "ca",
+    "mio",
+    "mrd",
+    "nr",
+    "vgl",
+    "u.a",
+    "ggf",
+    "inkl",
+    "zzgl",
+    "gem",
+    "abs",
+    "tsd",
+}
+
+# "zum 31. Dezember": a day number followed by a month name is a German date, not a sentence end.
+_MONTHS = {
+    "januar",
+    "februar",
+    "märz",
+    "april",
+    "mai",
+    "juni",
+    "juli",
+    "august",
+    "september",
+    "oktober",
+    "november",
+    "dezember",
+    "jänner",
 }
 
 _CANDIDATE = re.compile(r"(?<=[.!?])[\"')\]]*\s+(?=[\"'(\[]?[A-Z0-9])")
@@ -66,6 +98,9 @@ def split_sentences(text: str) -> list[str]:
             head = paragraph[start : match.start()]
             last_word = head.rsplit(" ", 1)[-1].rstrip(".!?\"')]").lower()
             if head.endswith(".") and (last_word in _ABBREVIATIONS or len(last_word) == 1):
+                continue
+            next_word = paragraph[match.end() :].split(" ", 1)[0].lower()
+            if head.endswith(".") and last_word.isdigit() and len(last_word) <= 2 and next_word in _MONTHS:
                 continue
             sentences.append(paragraph[start : match.start()].strip())
             start = match.end()
